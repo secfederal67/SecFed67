@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { authService } from '@/services/supabase/auth';
 
+console.log('🔧 DEBUG - Variables de entorno:');
+console.log('SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+console.log('SUPABASE_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTE' : 'FALTA');
+
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
