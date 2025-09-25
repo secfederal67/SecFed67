@@ -46,7 +46,7 @@ export const authService = {
       console.log('🔧 Método 1: Consulta directa');
       const { data: directData, error: directError } = await supabase
         .from('profiles')
-        .select('id, nombre_completo, rol, email, telefono, direccion')
+        .select('id, nombre_completo, rol, email, telefono, direccion, requires_password_change, password_changed_at')
         .eq('id', userId)
         .single();
       
@@ -66,7 +66,7 @@ export const authService = {
       console.log('🔧 Método 2: Consulta sin single()');
       const { data: arrayData, error: arrayError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, requires_password_change, password_changed_at')
         .eq('id', userId);
       
       if (arrayError) {
