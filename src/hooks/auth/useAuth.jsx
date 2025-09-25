@@ -41,6 +41,14 @@ export const useAuth = () => {
       setProfile(profile);
       setError(null);
 
+      // *** AGREGAR ESTE DEBUG TEMPORAL ***
+        console.log('🔧 DEBUG CAMBIO DE CONTRASEÑA:');
+        console.log('Profile completo:', profile);
+        console.log('requires_password_change:', profile.requires_password_change);
+        console.log('Tipo:', typeof profile.requires_password_change);
+        console.log('¿Es true?:', profile.requires_password_change === true);
+        console.log('password_changed_at:', profile.password_changed_at);
+
       // *** NUEVA LÓGICA: Verificar si requiere cambio de contraseña ***
       if (profile.requires_password_change === true) {
         console.log('🔒 Usuario requiere cambio de contraseña');
