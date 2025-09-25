@@ -82,7 +82,7 @@ const GestionPersonal = () => {
         throw new Error('Nombre completo y email son obligatorios');
       }
 
-      if (!formData.password) {
+      if (!editingUser && !formData.password) {
         throw new Error('Debe generar una contraseña');
       }
 
@@ -93,7 +93,7 @@ const GestionPersonal = () => {
       }
 
       if (editingUser) {
-        // Actualizar usuario existente (solo perfil, no auth)
+        // Actualizar usuario existente (solo perfil)
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -108,31 +108,30 @@ const GestionPersonal = () => {
         if (updateError) throw updateError;
         showMessage('success', 'Usuario actualizado correctamente');
       } else {
-        // Crear nuevo usuario en Auth
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: formData.email,
-          password: formData.password,
-          email_confirm: true
-        });
-
-        if (authError) throw authError;
-
-        // Crear perfil en la tabla profiles
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
+        // Crear nuevo usuario usando Edge Function
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        const response = await fetch('https://vakfeeczjthngwzcqkny.supabase.co/functions/v1/create-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionData.session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
             nombre_completo: formData.nombre_completo,
             rol: formData.rol,
-            email: formData.email,
             telefono: formData.telefono,
             direccion: formData.direccion
-          });
+          })
+        });
 
-        if (profileError) {
-          // Si falla el perfil, intentar limpiar el usuario de auth
-          await supabase.auth.admin.deleteUser(authData.user.id);
-          throw profileError;
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Error al crear usuario');
         }
 
         showMessage('success', `Usuario creado correctamente. Contraseña: ${formData.password}`);
