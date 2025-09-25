@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import GestionAlumnos from './GestionAlumnos';
+import CredencialesQR from './CredencialesQR';
 
 const Dashboard = () => {
   const { profile, signOut } = useAuth();
@@ -49,17 +50,7 @@ const Dashboard = () => {
         return <GestionAlumnos />;
       
       case 'credenciales':
-        return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold mb-4">Credenciales QR</h2>
-            <p className="text-gray-600 mb-4">
-              Módulo para generar e imprimir credenciales QR de los alumnos.
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800">Próximamente...</p>
-            </div>
-          </div>
-        );
+        return <CredencialesQR />;
       
       default:
         return renderDashboard();
