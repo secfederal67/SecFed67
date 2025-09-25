@@ -178,6 +178,7 @@ const GestionPersonal = () => {
   };
 
   const handleDelete = (user) => {
+    console.log('🔧 handleDelete ejecutado', user); // AGREGAR ESTO
     setUserToDelete(user);
     setShowDeleteModal(true);
   };
