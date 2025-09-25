@@ -41,14 +41,6 @@ export const useAuth = () => {
       setProfile(profile);
       setError(null);
 
-      // *** AGREGAR ESTE DEBUG TEMPORAL ***
-        console.log('🔧 DEBUG CAMBIO DE CONTRASEÑA:');
-        console.log('Profile completo:', profile);
-        console.log('requires_password_change:', profile.requires_password_change);
-        console.log('Tipo:', typeof profile.requires_password_change);
-        console.log('¿Es true?:', profile.requires_password_change === true);
-        console.log('password_changed_at:', profile.password_changed_at);
-
       // *** NUEVA LÓGICA: Verificar si requiere cambio de contraseña ***
       if (profile.requires_password_change === true) {
         console.log('🔒 Usuario requiere cambio de contraseña');
@@ -72,19 +64,39 @@ export const useAuth = () => {
     console.log('🔄 Contraseña cambiada, cerrando sesión...');
     
     try {
-      // Cerrar modal
+      // Cerrar modal inmediatamente
       setShowPasswordModal(false);
       setRequiresPasswordChange(false);
       
-      // Mensaje de éxito temporal
+      // Limpiar estado local primero
+      setUser(null);
+      setProfile(null);
+      setError(null);
+      
+      // Intentar logout, pero no fallar si ya se invalidó la sesión
+      try {
+        await authService.signOut();
+        console.log('✅ Logout normal exitoso');
+      } catch (logoutError) {
+        console.log('⚠️ Sesión ya invalidada por cambio de contraseña:', logoutError);
+        // No es un error real, Supabase invalidó la sesión automáticamente
+      }
+      
+      // Limpiar cualquier dato persistente de Supabase
+      await supabase.auth.signOut();
+      
+      // Mensaje de éxito
       alert('¡Contraseña cambiada exitosamente! Serás redirigido al login.');
       
-      // Cerrar sesión para forzar nuevo login
-      await signOut();
+      // Forzar redirect al login usando window.location (más confiable)
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 1000);
       
     } catch (error) {
       console.error('Error durante logout después de cambio de contraseña:', error);
-      // Forzar recarga de página como fallback
+      // Fallback: Forzar recarga completa de página
+      alert('Contraseña cambiada. Recargando página...');
       window.location.reload();
     }
   };
@@ -180,14 +192,31 @@ export const useAuth = () => {
   const signOut = async () => {
     setLoading(true);
     try {
-      await authService.signOut();
+      console.log('🚪 Cerrando sesión...');
+      
+      // Limpiar estado local inmediatamente
       setUser(null);
       setProfile(null);
       setError(null);
       setRequiresPasswordChange(false);
       setShowPasswordModal(false);
+      
+      // Intentar logout en Supabase
+      await authService.signOut();
+      console.log('✅ Logout exitoso');
+      
+      // Forzar redirect al login
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100); // Pequeño delay para que se procese el estado
+      
     } catch (err) {
       console.error('Error signing out:', err);
+      
+      // Aún así, forzar el redirect porque el estado local ya se limpió
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
     } finally {
       setLoading(false);
     }

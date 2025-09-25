@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 
 const ChangePasswordModal = ({ onPasswordChanged }) => {
@@ -24,36 +24,49 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
 
   const { profile } = useAuth();
 
-  // Validar contraseña en tiempo real
-  const validatePassword = (password) => {
-    const validations = {
-      length: password.length >= 8,
-      uppercase: /[A-Z]/.test(password),
-      lowercase: /[a-z]/.test(password),
-      number: /\d/.test(password),
-      match: password === formData.confirmPassword && password.length > 0
-    };
-    setValidations(validations);
-    return Object.values(validations).every(v => v);
-  };
+  // Validar contraseña con debounce
+  const debouncedValidatePassword = useCallback(
+    (password, confirmPassword) => {
+      const validations = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        match: password === confirmPassword && password.length > 0
+      };
+      setValidations(validations);
+      return Object.values(validations).every(v => v);
+    },
+    []
+  );
+
+  // Efecto para validar con delay
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (formData.newPassword) {
+        debouncedValidatePassword(formData.newPassword, formData.confirmPassword);
+      }
+    }, 300); // 300ms de delay
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.newPassword, formData.confirmPassword, debouncedValidatePassword]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Actualizar estado inmediatamente (sin validaciones que causen re-render)
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
 
-    // Validar en tiempo real cuando cambia la nueva contraseña
-    if (name === 'newPassword') {
-      validatePassword(value);
-    }
-    
-    // Validar coincidencia cuando cambia la confirmación
-    if (name === 'confirmPassword') {
-      setValidations(prev => ({
-        ...prev,
-        match: value === formData.newPassword && value.length > 0
-      }));
-    }
+    // Las validaciones se ejecutarán con delay por el useEffect
+  };
+
+  // Validación final para el submit (sin debounce)
+  const validatePasswordFinal = (password) => {
+    return password.length >= 8 &&
+           /[A-Z]/.test(password) &&
+           /[a-z]/.test(password) &&
+           /\d/.test(password);
   };
 
   const togglePasswordVisibility = (field) => {
@@ -71,7 +84,7 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
         throw new Error('La contraseña actual es obligatoria');
       }
 
-      if (!validatePassword(formData.newPassword)) {
+      if (!validatePasswordFinal(formData.newPassword)) {
         throw new Error('La nueva contraseña no cumple con los requisitos');
       }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { supabase } from '@/services/supabase/client';
+import DeleteConfirmationModal from '@/components/ui/DeleteConfirmationModal';
 
 const GestionPersonal = () => {
   const { profile } = useAuth();
@@ -8,6 +9,9 @@ const GestionPersonal = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -173,27 +177,57 @@ const GestionPersonal = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (user) => {
-    if (!confirm(`¿Estás seguro de eliminar a ${user.nombre_completo}?`)) return;
+  const handleDelete = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async (user) => {
+    setIsDeleting(true);
 
     try {
-      // Eliminar perfil
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user.id);
+      // Llamar a la Edge Function para eliminar usuario
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await fetch('https://vakfeeczjthngwzcqkny.supabase.co/functions/v1/delete-user', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData.session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          user_id: user.id
+        })
+      });
 
-      if (profileError) throw profileError;
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Error al eliminar usuario');
+      }
 
-      // Eliminar de auth
-      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
-      if (authError) console.warn('Error eliminando de auth:', authError);
-
-      showMessage('success', 'Usuario eliminado correctamente');
+      showMessage('success', `Usuario ${user.nombre_completo} eliminado correctamente`);
+      
+      // Cerrar modal y limpiar estado
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      
+      // Recargar lista
       await loadPersonal();
+
     } catch (error) {
       console.error('Error eliminando usuario:', error);
-      showMessage('error', 'Error al eliminar el usuario');
+      showMessage('error', error.message || 'Error al eliminar el usuario');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    if (!isDeleting) {
+      setShowDeleteModal(false);
+      setUserToDelete(null);
     }
   };
 
@@ -216,7 +250,16 @@ const GestionPersonal = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Cargando personal...</p>
-        </div>
+          {/* Modal de Eliminación */}
+      {showDeleteModal && userToDelete && (
+        <DeleteConfirmationModal
+          user={userToDelete}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+          isDeleting={isDeleting}
+        />
+      )}
+    </div>
       </div>
     );
   }
