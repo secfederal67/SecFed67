@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import GestionAlumnos from './GestionAlumnos';
 
-const ApoyoDashboard = () => {
+const Dashboard = () => {
   const { profile, signOut } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentView, setCurrentView] = useState('dashboard'); // Agregar navegación interna
+  const [currentView, setCurrentView] = useState('dashboard');
 
   // Actualizar reloj cada segundo
   useEffect(() => {
@@ -27,7 +27,7 @@ const ApoyoDashboard = () => {
       id: 'dashboard',
       name: 'Panel Principal',
       icon: '📊',
-      description: 'Vista general y estadísticas'
+      description: 'Vista general'
     },
     {
       id: 'alumnos',
@@ -40,12 +40,6 @@ const ApoyoDashboard = () => {
       name: 'Credenciales QR',
       icon: '📱',
       description: 'Generar credenciales de acceso'
-    },
-    {
-      id: 'reportes',
-      name: 'Reportes',
-      icon: '📊',
-      description: 'Consultas y estadísticas'
     }
   ];
 
@@ -62,20 +56,7 @@ const ApoyoDashboard = () => {
               Módulo para generar e imprimir credenciales QR de los alumnos.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800">En desarrollo...</p>
-            </div>
-          </div>
-        );
-      
-      case 'reportes':
-        return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold mb-4">Reportes</h2>
-            <p className="text-gray-600 mb-4">
-              Consultas y reportes de información estudiantil.
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800">En desarrollo...</p>
+              <p className="text-blue-800">Próximamente...</p>
             </div>
           </div>
         );
@@ -87,14 +68,14 @@ const ApoyoDashboard = () => {
 
   const renderDashboard = () => (
     <>
-      {/* Bienvenida y Hora */}
+      {/* Bienvenida */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            ¡Bienvenido, {profile?.nombre_completo}!
+            Bienvenido, {profile?.nombre_completo}
           </h2>
           <p className="text-gray-600 mb-4">
-            Panel de Personal de Apoyo - Gestión Administrativa
+            Panel de Personal de Apoyo
           </p>
           <div className="bg-blue-50 rounded-lg p-4 inline-block">
             <p className="text-sm text-blue-700 font-medium">Hora actual:</p>
@@ -113,35 +94,10 @@ const ApoyoDashboard = () => {
         </div>
       </div>
 
-      {/* Estadísticas Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <StatCard
-          title="Estado del Sistema"
-          value="✅ Activo"
-          subtitle="Funcionando correctamente"
-          color="border-green-500"
-          icon="🖥️"
-        />
-        <StatCard
-          title="Cambio de Contraseña"
-          value="✅ Completado"
-          subtitle="Seguridad actualizada"
-          color="border-blue-500"
-          icon="🔐"
-        />
-        <StatCard
-          title="Acceso"
-          value="✅ Autorizado"
-          subtitle="Personal de Apoyo"
-          color="border-indigo-500"
-          icon="👨‍💼"
-        />
-      </div>
-
       {/* Accesos Rápidos */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Accesos Rápidos</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h2 className="text-xl font-bold mb-4">Módulos Disponibles</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={() => setCurrentView('alumnos')}
             className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 transition-colors"
@@ -167,56 +123,40 @@ const ApoyoDashboard = () => {
               Generar e imprimir credenciales
             </p>
           </button>
-
-          <button
-            onClick={() => setCurrentView('reportes')}
-            className="p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-indigo-300 transition-colors"
-          >
-            <div className="flex items-center mb-2">
-              <span className="text-2xl mr-3">📊</span>
-              <span className="font-medium">Reportes</span>
-            </div>
-            <p className="text-sm text-gray-500">
-              Consultas y reportes de alumnos
-            </p>
-          </button>
         </div>
       </div>
 
-      {/* Footer de Testing */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
+      {/* Información del Usuario */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold mb-4">Información Personal</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
+            <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
+              {profile?.nombre_completo}
+            </p>
           </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-green-800">
-              Sistema de Cambio de Contraseña Funcionando
-            </h3>
-            <div className="mt-2 text-sm text-green-700">
-              <p>• Primer login detectado correctamente</p>
-              <p>• Cambio de contraseña completado</p>
-              <p>• Dashboard cargado exitosamente</p>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Rol</label>
+            <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
+              {profile?.rol}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
+              {profile?.email}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+            <p className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
+              {profile?.telefono || 'No especificado'}
+            </p>
           </div>
         </div>
       </div>
     </>
-  );
-
-  const StatCard = ({ title, value, subtitle, color, icon }) => (
-    <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${color}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
-        </div>
-        <div className="text-4xl">{icon}</div>
-      </div>
-    </div>
   );
 
   return (
@@ -233,7 +173,7 @@ const ApoyoDashboard = () => {
               </div>
               <div className="ml-3">
                 <h1 className="text-xl font-semibold text-gray-900">EDUQUIARMX</h1>
-                <p className="text-sm text-gray-600">Panel de Personal de Apoyo</p>
+                <p className="text-sm text-gray-600">Personal de Apoyo</p>
               </div>
             </div>
 
@@ -295,4 +235,4 @@ const ApoyoDashboard = () => {
   );
 };
 
-export default ApoyoDashboard;
+export default Dashboard;
