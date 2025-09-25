@@ -177,10 +177,18 @@ const GestionPersonal = () => {
     setShowModal(true);
   };
 
+  
   const handleDelete = (user) => {
-    console.log('🔧 handleDelete ejecutado', user); // AGREGAR ESTO
+    console.log('🔧 handleDelete ejecutado', user);
+    console.log('🔧 Estado antes:', { showDeleteModal, userToDelete });
+  
     setUserToDelete(user);
     setShowDeleteModal(true);
+  
+  // Verificar después del setState (con timeout)
+  setTimeout(() => {
+    console.log('🔧 Estado después:', { showDeleteModal, userToDelete });
+  }, 100);
   };
 
   const confirmDelete = async (user) => {
@@ -246,6 +254,7 @@ const GestionPersonal = () => {
   };
 
   if (isLoading) {
+    console.log('🔧 Renderizando modal:', { showDeleteModal, userToDelete });
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="text-center">
