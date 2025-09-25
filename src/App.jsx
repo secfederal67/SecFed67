@@ -2,13 +2,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuth } from '@/hooks/auth/useAuth';
 import Login from '@/pages/auth/Login';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 // Importaciones de páginas por rol
 import DirectorDashboard from '@/pages/director/Dashboard';
+import ApoyoDashboard from '@/pages/apoyo/Dashboard';
 // import SubdirectorDashboard from '@/pages/subdirector/Dashboard';
 // import MaestroDashboard from '@/pages/maestro/Dashboard';
 // import TrabajosocialDashboard from '@/pages/trabajosocial/Dashboard';
-// import ApoyoDashboard from '@/pages/apoyo/Dashboard';
 // import AccesoEscaneo from '@/pages/acceso/EscaneoQR';
 
 // Componente temporal para mostrar dashboard básico
@@ -84,8 +85,7 @@ const DashboardRouter = () => {
       // return <TrabajosocialDashboard />;
     
     case 'Apoyo':
-      return <TemporaryDashboard role="Apoyo" />;
-      // return <ApoyoDashboard />;
+      return <ApoyoDashboard />;
     
     case 'Acceso':
       return <TemporaryDashboard role="Acceso" />;
@@ -117,9 +117,16 @@ const DashboardRouter = () => {
 };
 
 function App() {
+  const { showPasswordModal, handlePasswordChanged } = useAuth();
+
   return (
     <Router>
       <div className="App">
+        {/* Modal de Cambio de Contraseña (se muestra sobre todo) */}
+        {showPasswordModal && (
+          <ChangePasswordModal onPasswordChanged={handlePasswordChanged} />
+        )}
+
         <Routes>
           {/* Ruta pública - Login */}
           <Route path="/login" element={<Login />} />

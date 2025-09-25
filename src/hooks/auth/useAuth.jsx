@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import { authService } from '@/services/supabase/auth';
-
-console.log('🔧 DEBUG - Variables de entorno:');
-console.log('SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
-console.log('SUPABASE_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTE' : 'FALTA');
-
+import { supabase } from '@/services/supabase/client';
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const loadUserProfile = async (userId) => {
     try {
@@ -21,7 +19,6 @@ export const useAuth = () => {
       if (error) {
         console.error('❌ Error cargando perfil:', error);
         
-        // Si es error 406, probablemente es problema de RLS
         if (error.message?.includes('406') || error.code === 'PGRST116') {
           setError('Error de permisos al cargar el perfil. Contacta al administrador.');
           console.warn('💡 Posible problema de RLS en tabla profiles');
@@ -43,6 +40,17 @@ export const useAuth = () => {
       console.log('✅ Perfil cargado:', profile);
       setProfile(profile);
       setError(null);
+
+      // *** NUEVA LÓGICA: Verificar si requiere cambio de contraseña ***
+      if (profile.requires_password_change === true) {
+        console.log('🔒 Usuario requiere cambio de contraseña');
+        setRequiresPasswordChange(true);
+        setShowPasswordModal(true);
+      } else {
+        console.log('🟢 Usuario no requiere cambio de contraseña');
+        setRequiresPasswordChange(false);
+        setShowPasswordModal(false);
+      }
       
     } catch (err) {
       console.error('💥 Error inesperado cargando perfil:', err);
@@ -51,12 +59,33 @@ export const useAuth = () => {
     }
   };
 
+  // *** NUEVA FUNCIÓN: Manejar cuando se cambió la contraseña ***
+  const handlePasswordChanged = async () => {
+    console.log('🔄 Contraseña cambiada, cerrando sesión...');
+    
+    try {
+      // Cerrar modal
+      setShowPasswordModal(false);
+      setRequiresPasswordChange(false);
+      
+      // Mensaje de éxito temporal
+      alert('¡Contraseña cambiada exitosamente! Serás redirigido al login.');
+      
+      // Cerrar sesión para forzar nuevo login
+      await signOut();
+      
+    } catch (error) {
+      console.error('Error durante logout después de cambio de contraseña:', error);
+      // Forzar recarga de página como fallback
+      window.location.reload();
+    }
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       try {
         console.log('🚀 Inicializando autenticación...');
         
-        // Verificar sesión actual
         const { user: currentUser, error: userError } = await authService.getCurrentUser();
         
         if (userError) {
@@ -76,6 +105,8 @@ export const useAuth = () => {
         } else {
           console.log('👤 No hay usuario autenticado');
           setProfile(null);
+          setRequiresPasswordChange(false);
+          setShowPasswordModal(false);
         }
 
       } catch (err) {
@@ -88,7 +119,6 @@ export const useAuth = () => {
 
     initAuth();
 
-    // Escuchar cambios de autenticación
     const { data: { subscription } } = authService.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 Cambio de autenticación:', event);
@@ -105,6 +135,8 @@ export const useAuth = () => {
           console.log('👤 Usuario deslogueado');
           setProfile(null);
           setError(null);
+          setRequiresPasswordChange(false);
+          setShowPasswordModal(false);
         }
       }
     );
@@ -144,6 +176,8 @@ export const useAuth = () => {
       setUser(null);
       setProfile(null);
       setError(null);
+      setRequiresPasswordChange(false);
+      setShowPasswordModal(false);
     } catch (err) {
       console.error('Error signing out:', err);
     } finally {
@@ -157,7 +191,10 @@ export const useAuth = () => {
     loading,
     error,
     role: profile?.rol,
+    requiresPasswordChange,
+    showPasswordModal,
     signIn,
-    signOut
+    signOut,
+    handlePasswordChanged
   };
 };
