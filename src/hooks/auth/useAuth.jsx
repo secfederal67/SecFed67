@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { authService } from '@/services/supabase/auth';
 import { supabase } from '@/services/supabase/client';
 
@@ -10,23 +10,29 @@ export const useAuth = () => {
   const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  const loadUserProfile = async (userId) => {
+  // Referencias para evitar re-renders y llamadas duplicadas
+  const initializingRef = useRef(false);
+  const profileLoadedRef = useRef(false);
+  const subscriptionRef = useRef(null);
+
+  // Función optimizada para cargar perfil (con useCallback para evitar re-creación)
+  const loadUserProfile = useCallback(async (userId, isInitialLoad = false) => {
+    // Evitar cargas duplicadas del mismo usuario
+    if (profileLoadedRef.current === userId) {
+      console.log('🔧 Perfil ya cargado para usuario:', userId);
+      return;
+    }
+
     try {
-      console.log('🔍 Cargando perfil para usuario:', userId);
+      console.log('🔍 Cargando perfil para usuario:', userId, isInitialLoad ? '(inicial)' : '(actualización)');
       
       const { profile, error } = await authService.getUserProfile(userId);
       
       if (error) {
-        console.error('❌ Error cargando perfil:', error);
-        
-        if (error.message?.includes('406') || error.code === 'PGRST116') {
-          setError('Error de permisos al cargar el perfil. Contacta al administrador.');
-          console.warn('💡 Posible problema de RLS en tabla profiles');
-        } else {
-          setError('Error al cargar el perfil del usuario');
-        }
-        
+        console.error('❌ Error cargando perfil:', error.message);
+        setError('Error al cargar el perfil del usuario');
         setProfile(null);
+        profileLoadedRef.current = null;
         return;
       }
 
@@ -34,78 +40,154 @@ export const useAuth = () => {
         console.warn('⚠️ No se encontró perfil para el usuario');
         setError('No se encontró perfil para este usuario');
         setProfile(null);
+        profileLoadedRef.current = null;
         return;
       }
 
-      console.log('✅ Perfil cargado:', profile);
+      console.log('✅ Perfil cargado:', profile.nombre_completo, `(${profile.rol})`);
       setProfile(profile);
       setError(null);
+      profileLoadedRef.current = userId;
 
-      // *** NUEVA LÓGICA: Verificar si requiere cambio de contraseña ***
-      if (profile.requires_password_change === true) {
-        console.log('🔒 Usuario requiere cambio de contraseña');
-        setRequiresPasswordChange(true);
-        setShowPasswordModal(true);
-      } else {
-        console.log('🟢 Usuario no requiere cambio de contraseña');
-        setRequiresPasswordChange(false);
-        setShowPasswordModal(false);
+      // Verificar cambio de contraseña solo en carga inicial o cuando cambia el usuario
+      if (isInitialLoad || !profileLoadedRef.current) {
+        const needsPasswordChange = profile.requires_password_change === true;
+        console.log(needsPasswordChange ? '🔒 Usuario requiere cambio de contraseña' : '🟢 Contraseña OK');
+        
+        setRequiresPasswordChange(needsPasswordChange);
+        setShowPasswordModal(needsPasswordChange);
       }
       
     } catch (err) {
       console.error('💥 Error inesperado cargando perfil:', err);
       setError('Error inesperado al cargar el perfil');
       setProfile(null);
+      profileLoadedRef.current = null;
     }
-  };
+  }, []);
 
-  // *** NUEVA FUNCIÓN: Manejar cuando se cambió la contraseña ***
-  const handlePasswordChanged = async () => {
-    console.log('🔄 Contraseña cambiada, cerrando sesión...');
+  // Función optimizada para manejar cambio de contraseña
+  const handlePasswordChanged = useCallback(async () => {
+    console.log('🔄 Contraseña cambiada, procesando logout...');
     
     try {
-      // Cerrar modal inmediatamente
+      // Limpiar estados inmediatamente
       setShowPasswordModal(false);
       setRequiresPasswordChange(false);
-      
-      // Limpiar estado local primero
       setUser(null);
       setProfile(null);
       setError(null);
       
-      // Intentar logout, pero no fallar si ya se invalidó la sesión
-      try {
-        await authService.signOut();
-        console.log('✅ Logout normal exitoso');
-      } catch (logoutError) {
-        console.log('⚠️ Sesión ya invalidada por cambio de contraseña:', logoutError);
-        // No es un error real, Supabase invalidó la sesión automáticamente
+      // Limpiar referencias
+      profileLoadedRef.current = null;
+      initializingRef.current = false;
+
+      // Limpiar suscripción existente
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
       }
       
-      // Limpiar cualquier dato persistente de Supabase
+      // Logout silencioso (puede fallar si la sesión ya se invalidó)
+      try {
+        await authService.signOut();
+      } catch (logoutError) {
+        console.log('⚠️ Logout falló (sesión ya invalidada):', logoutError.message);
+      }
+      
+      // Logout adicional directo en Supabase
       await supabase.auth.signOut();
       
-      // Mensaje de éxito
-      alert('¡Contraseña cambiada exitosamente! Serás redirigido al login.');
+      // Mensaje y redirect
+      alert('Contraseña cambiada exitosamente. Redirigiendo al login...');
       
-      // Forzar redirect al login usando window.location (más confiable)
       setTimeout(() => {
         window.location.href = '/login';
       }, 1000);
       
     } catch (error) {
-      console.error('Error durante logout después de cambio de contraseña:', error);
-      // Fallback: Forzar recarga completa de página
-      alert('Contraseña cambiada. Recargando página...');
+      console.error('Error en handlePasswordChanged:', error);
       window.location.reload();
     }
-  };
+  }, []);
 
+  // Función optimizada de signOut
+  const signOut = useCallback(async () => {
+    console.log('🚪 Cerrando sesión...');
+    setLoading(true);
+    
+    try {
+      // Limpiar estado local inmediatamente
+      setUser(null);
+      setProfile(null);
+      setError(null);
+      setRequiresPasswordChange(false);
+      setShowPasswordModal(false);
+      
+      // Limpiar referencias
+      profileLoadedRef.current = null;
+      initializingRef.current = false;
+      
+      // Limpiar suscripción
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+      
+      // Logout
+      await authService.signOut();
+      console.log('✅ Logout exitoso');
+      
+    } catch (err) {
+      console.error('Error en signOut:', err);
+    } finally {
+      setLoading(false);
+      // Redirect forzado
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
+    }
+  }, []);
+
+  // Función optimizada de signIn
+  const signIn = useCallback(async (email, password) => {
+    setError(null);
+    setLoading(true);
+    
+    try {
+      const result = await authService.signIn(email, password);
+      
+      if (result.error) {
+        setError('Credenciales inválidas');
+        return { error: result.error };
+      }
+
+      // No establecer loading aquí, el listener se encargará
+      return { error: null };
+      
+    } catch (err) {
+      setError('Error de conexión');
+      return { error: err };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Efecto principal de inicialización
   useEffect(() => {
+    // Evitar inicializaciones múltiples
+    if (initializingRef.current) {
+      console.log('🔧 Inicialización ya en progreso, omitiendo...');
+      return;
+    }
+
     const initAuth = async () => {
+      if (initializingRef.current) return;
+      
+      initializingRef.current = true;
+      console.log('🚀 Inicializando autenticación...');
+      
       try {
-        console.log('🚀 Inicializando autenticación...');
-        
         const { user: currentUser, error: userError } = await authService.getCurrentUser();
         
         if (userError) {
@@ -121,12 +203,13 @@ export const useAuth = () => {
 
         if (currentUser) {
           console.log('👤 Usuario autenticado:', currentUser.email);
-          await loadUserProfile(currentUser.id);
+          await loadUserProfile(currentUser.id, true);
         } else {
           console.log('👤 No hay usuario autenticado');
           setProfile(null);
           setRequiresPasswordChange(false);
           setShowPasswordModal(false);
+          profileLoadedRef.current = null;
         }
 
       } catch (err) {
@@ -134,93 +217,59 @@ export const useAuth = () => {
         setError('Error inicializando la aplicación');
       } finally {
         setLoading(false);
+        initializingRef.current = false;
       }
     };
 
     initAuth();
 
-    const { data: { subscription } } = authService.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Cambio de autenticación:', event);
-        
-        const currentUser = session?.user || null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          console.log('👤 Usuario logueado:', currentUser.email);
-          setLoading(true);
-          await loadUserProfile(currentUser.id);
-          setLoading(false);
-        } else {
-          console.log('👤 Usuario deslogueado');
-          setProfile(null);
-          setError(null);
-          setRequiresPasswordChange(false);
-          setShowPasswordModal(false);
+    // Configurar listener de cambios de autenticación (solo una vez)
+    if (!subscriptionRef.current) {
+      const { data: { subscription } } = authService.onAuthStateChange(
+        async (event, session) => {
+          console.log('🔄 Auth state change:', event);
+          
+          // Evitar procesar durante inicialización
+          if (initializingRef.current) {
+            console.log('🔧 Ignorando auth change durante inicialización');
+            return;
+          }
+          
+          const currentUser = session?.user || null;
+          
+          // Solo procesar cambios reales de usuario
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (currentUser && currentUser.id !== user?.id) {
+              console.log('👤 Usuario logueado:', currentUser.email);
+              setUser(currentUser);
+              // No mostrar loading para cambios de sesión
+              await loadUserProfile(currentUser.id, true);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            console.log('👤 Usuario deslogueado');
+            setUser(null);
+            setProfile(null);
+            setError(null);
+            setRequiresPasswordChange(false);
+            setShowPasswordModal(false);
+            profileLoadedRef.current = null;
+          }
+          // Ignorar otros eventos como INITIAL_SESSION para evitar loops
         }
-      }
-    );
+      );
+      
+      subscriptionRef.current = subscription;
+    }
 
+    // Cleanup
     return () => {
-      subscription?.unsubscribe();
-    };
-  }, []);
-
-  const signIn = async (email, password) => {
-    setError(null);
-    setLoading(true);
-    
-    try {
-      const result = await authService.signIn(email, password);
-      
-      if (result.error) {
-        setError('Credenciales inválidas');
-        return { error: result.error };
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
       }
-
-      // El perfil se cargará automáticamente por el listener onAuthStateChange
-      return { error: null };
-      
-    } catch (err) {
-      setError('Error de conexión');
-      return { error: err };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signOut = async () => {
-    setLoading(true);
-    try {
-      console.log('🚪 Cerrando sesión...');
-      
-      // Limpiar estado local inmediatamente
-      setUser(null);
-      setProfile(null);
-      setError(null);
-      setRequiresPasswordChange(false);
-      setShowPasswordModal(false);
-      
-      // Intentar logout en Supabase
-      await authService.signOut();
-      console.log('✅ Logout exitoso');
-      
-      // Forzar redirect al login
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 100); // Pequeño delay para que se procese el estado
-      
-    } catch (err) {
-      console.error('Error signing out:', err);
-      
-      // Aún así, forzar el redirect porque el estado local ya se limpió
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 100);
-    } finally {
-      setLoading(false);
-    }
-  };
+      initializingRef.current = false;
+    };
+  }, []); // Dependencias vacías para ejecutar solo una vez
 
   return {
     user,
