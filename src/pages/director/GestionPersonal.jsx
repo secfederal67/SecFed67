@@ -8,7 +8,7 @@ const GestionPersonal = () => {
   const [personal, setPersonal] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false); // CAMBIADO
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -151,7 +151,7 @@ const GestionPersonal = () => {
         password: ''
       });
       setEditingUser(null);
-      setShowModal(false);
+      setShowCreateModal(false); // CAMBIADO
       
       // Recargar lista
       await loadPersonal();
@@ -174,21 +174,20 @@ const GestionPersonal = () => {
       direccion: user.direccion || '',
       password: ''
     });
-    setShowModal(true);
+    setShowCreateModal(true); // CAMBIADO
   };
 
-  
   const handleDelete = (user) => {
     console.log('🔧 handleDelete ejecutado', user);
     console.log('🔧 Estado antes:', { showDeleteModal, userToDelete });
-  
+    
     setUserToDelete(user);
     setShowDeleteModal(true);
-  
-  // Verificar después del setState (con timeout)
-  setTimeout(() => {
-    console.log('🔧 Estado después:', { showDeleteModal, userToDelete });
-  }, 100);
+    
+    // Verificar después del setState (con timeout)
+    setTimeout(() => {
+      console.log('🔧 Estado después:', { showDeleteModal, userToDelete });
+    }, 100);
   };
 
   const confirmDelete = async (user) => {
@@ -250,29 +249,22 @@ const GestionPersonal = () => {
       direccion: '',
       password: ''
     });
-    setShowModal(true);
+    setShowCreateModal(true); // CAMBIADO
   };
 
   if (isLoading) {
-    console.log('🔧 Renderizando modal:', { showDeleteModal, userToDelete });
     return (
       <div className="flex items-center justify-center min-h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Cargando personal...</p>
-          {/* Modal de Eliminación */}
-      {showDeleteModal && userToDelete && (
-        <DeleteConfirmationModal
-          user={userToDelete}
-          onConfirm={confirmDelete}
-          onCancel={cancelDelete}
-          isDeleting={isDeleting}
-        />
-      )}
-    </div>
+        </div>
       </div>
     );
   }
+
+  // Debug del render
+  console.log('🔧 Renderizando modal:', { showDeleteModal, userToDelete });
 
   return (
     <div className="max-w-6xl mx-auto py-6 px-4">
@@ -399,7 +391,7 @@ const GestionPersonal = () => {
       </div>
 
       {/* Modal de Creación/Edición */}
-      {showModal && (
+      {showCreateModal && ( // CAMBIADO
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
@@ -515,7 +507,7 @@ const GestionPersonal = () => {
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => setShowCreateModal(false)} // CAMBIADO
                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
                   >
                     Cancelar
@@ -539,6 +531,16 @@ const GestionPersonal = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Eliminación */}
+      {showDeleteModal && userToDelete && (
+        <DeleteConfirmationModal
+          user={userToDelete}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+          isDeleting={isDeleting}
+        />
       )}
     </div>
   );
