@@ -9,6 +9,7 @@ const CredencialesQR = () => {
   const [ctInfo, setCTInfo] = useState(null);
   const [cicloActivo, setCicloActivo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showCredential, setShowCredential] = useState(false);
   const credentialRef = useRef(null);
 
@@ -19,36 +20,57 @@ const CredencialesQR = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      console.log('🔍 Cargando datos para credenciales...');
+      
       // Cargar personal (incluyendo al usuario actual)
+      console.log('📋 Cargando personal...');
       const { data: personalData, error: personalError } = await supabase
         .from('profiles')
         .select('id, nombre_completo, rol, email, telefono')
         .order('nombre_completo');
 
-      if (personalError) throw personalError;
+      if (personalError) {
+        console.error('❌ Error cargando personal:', personalError);
+        throw personalError;
+      }
+      console.log('✅ Personal cargado:', personalData?.length, 'registros');
 
       // Cargar información del CT
+      console.log('🏫 Cargando información del CT...');
       const { data: ctData, error: ctError } = await supabase
         .from('ct_info')
         .select('*')
         .single();
 
-      if (ctError) throw ctError;
+      if (ctError) {
+        console.error('❌ Error cargando CT info:', ctError);
+        throw ctError;
+      }
+      console.log('✅ CT Info cargada:', ctData?.nombre_oficial);
 
       // Cargar ciclo activo
+      console.log('📅 Cargando ciclo activo...');
       const { data: cicloData, error: cicloError } = await supabase
         .from('ciclos_escolares')
         .select('*')
         .eq('estatus', 'Activo')
-        .single();
+        .maybeSingle();
 
-      if (cicloError) throw cicloError;
+      if (cicloError) {
+        console.error('❌ Error cargando ciclo:', cicloError);
+        throw cicloError;
+      }
+      console.log('✅ Ciclo activo cargado:', cicloData?.nombre);
 
       setPersonal(personalData || []);
       setCTInfo(ctData);
       setCicloActivo(cicloData);
+      
+      console.log('🎉 Todos los datos cargados correctamente');
+      setError(''); // Limpiar errores previos
     } catch (error) {
-      console.error('Error cargando datos:', error);
+      console.error('💥 Error general cargando datos:', error);
+      setError(`Error cargando datos: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -198,24 +220,51 @@ const CredencialesQR = () => {
         </div>
       </div>
 
-      {/* Información del CT */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="font-medium text-blue-900 mb-2">Información de la Credencial</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="font-medium text-blue-800">Institución:</span>
-            <p className="text-blue-700">{ctInfo?.nombre_oficial}</p>
-          </div>
-          <div>
-            <span className="font-medium text-blue-800">Clave CT:</span>
-            <p className="text-blue-700">{ctInfo?.clave_ct}</p>
-          </div>
-          <div>
-            <span className="font-medium text-blue-800">Ciclo:</span>
-            <p className="text-blue-700">{cicloActivo?.nombre}</p>
+      {/* Mensajes de Error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex">
+            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error de Carga</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={loadData}
+                className="mt-2 text-sm text-red-600 hover:text-red-500 underline"
+              >
+                Intentar nuevamente
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Información del CT */}
+      {!error && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="font-medium text-blue-900 mb-2">Información de la Credencial</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-blue-800">Institución:</span>
+              <p className="text-blue-700">{ctInfo?.nombre_oficial || 'No configurado'}</p>
+            </div>
+            <div>
+              <span className="font-medium text-blue-800">Clave CT:</span>
+              <p className="text-blue-700">{ctInfo?.clave_ct || 'No configurado'}</p>
+            </div>
+            <div>
+              <span className="font-medium text-blue-800">Ciclo:</span>
+              <p className="text-blue-700">{cicloActivo?.nombre || 'No configurado'}</p>
+            </div>
+          </div>
+          {/* Debug info */}
+          <div className="mt-3 text-xs text-blue-600">
+            Personal: {personal.length} registros | CT: {ctInfo ? 'OK' : 'Falta'} | Ciclo: {cicloActivo ? 'OK' : 'Falta'}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Lista de Personal */}

@@ -1,6 +1,44 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 
+// ✅ MOVER EL COMPONENTE FUERA DEL COMPONENTE PRINCIPAL
+const PasswordField = ({ name, value, placeholder, label, showField, onChange, onToggleVisibility, disabled }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+    </label>
+    <div className="relative">
+      <input
+        type={showField ? "text" : "password"}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required
+        className="w-full px-3 py-3 pr-12 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+      <button
+        type="button"
+        onClick={onToggleVisibility}
+        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+        disabled={disabled}
+      >
+        {showField ? (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.5 8.5m1.378 1.378L12 12m-3.122-3.122a3 3 0 013.122 3.122M15 12a3 3 0 01-3 3m0 0a3 3 0 01-3-3m3 3v.01M12 9v.01m-6.546-.054a9.97 9.97 0 011.563-3.029M21.543 12A10.05 10.05 0 0112 19" />
+          </svg>
+        ) : (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        )}
+      </button>
+    </div>
+  </div>
+);
+
 const ChangePasswordModal = ({ onPasswordChanged }) => {
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -51,7 +89,8 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
     return () => clearTimeout(timeoutId);
   }, [formData.newPassword, formData.confirmPassword, debouncedValidatePassword]);
 
-  const handleInputChange = (e) => {
+  // ✅ ESTABILIZAR LA FUNCIÓN handleInputChange
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     
     // Actualizar estado inmediatamente (sin validaciones que causen re-render)
@@ -59,7 +98,7 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
     setError('');
 
     // Las validaciones se ejecutarán con delay por el useEffect
-  };
+  }, []);
 
   // Validación final para el submit (sin debounce)
   const validatePasswordFinal = (password) => {
@@ -69,9 +108,10 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
            /\d/.test(password);
   };
 
-  const togglePasswordVisibility = (field) => {
+  // ✅ ESTABILIZAR LA FUNCIÓN togglePasswordVisibility
+  const togglePasswordVisibility = useCallback((field) => {
     setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,43 +169,6 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
     }
   };
 
-  const PasswordField = ({ name, value, placeholder, label, showField }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          type={showField ? "text" : "password"}
-          name={name}
-          value={value}
-          onChange={handleInputChange}
-          required
-          className="w-full px-3 py-3 pr-12 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          placeholder={placeholder}
-          disabled={isChanging}
-        />
-        <button
-          type="button"
-          onClick={() => togglePasswordVisibility(name === 'currentPassword' ? 'current' : name === 'newPassword' ? 'new' : 'confirm')}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-          disabled={isChanging}
-        >
-          {showField ? (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.5 8.5m1.378 1.378L12 12m-3.122-3.122a3 3 0 013.122 3.122M15 12a3 3 0 01-3 3m0 0a3 3 0 01-3-3m3 3v.01M12 9v.01m-6.546-.054a9.97 9.97 0 011.563-3.029M21.543 12A10.05 10.05 0 0112 19" />
-            </svg>
-          ) : (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-          )}
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -194,6 +197,9 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
             placeholder="Tu contraseña actual"
             label="Contraseña Actual"
             showField={showPasswords.current}
+            onChange={handleInputChange}
+            onToggleVisibility={() => togglePasswordVisibility('current')}
+            disabled={isChanging}
           />
 
           {/* Nueva Contraseña */}
@@ -203,6 +209,9 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
             placeholder="Tu nueva contraseña"
             label="Nueva Contraseña"
             showField={showPasswords.new}
+            onChange={handleInputChange}
+            onToggleVisibility={() => togglePasswordVisibility('new')}
+            disabled={isChanging}
           />
 
           {/* Indicadores de Validación */}
@@ -237,6 +246,9 @@ const ChangePasswordModal = ({ onPasswordChanged }) => {
             placeholder="Confirma tu nueva contraseña"
             label="Confirmar Nueva Contraseña"
             showField={showPasswords.confirm}
+            onChange={handleInputChange}
+            onToggleVisibility={() => togglePasswordVisibility('confirm')}
+            disabled={isChanging}
           />
 
           {/* Indicador de Coincidencia */}

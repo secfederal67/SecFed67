@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import ConfiguracionCT from './ConfiguracionCT';
 import GestionPersonal from './GestionPersonal';
+import LogoutConfirmationModal from '@/components/auth/LogoutConfirmationModal';
 
 const DirectorDashboard = () => {
   const { profile, signOut } = useAuth();
@@ -12,6 +13,7 @@ const DirectorDashboard = () => {
     maestrosActivos: 0,
     incidentesPendientes: 0
   });
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Simulamos la carga de estadísticas (después conectaremos con Supabase)
   useEffect(() => {
@@ -31,10 +33,14 @@ const DirectorDashboard = () => {
     loadStats();
   }, []);
 
-  const handleSignOut = async () => {
-    if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-      await signOut();
-    }
+  
+
+  const handleSignOut = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const menuItems = [
@@ -286,6 +292,10 @@ const DirectorDashboard = () => {
           </div>
         </div>
       </div>
+      <LogoutConfirmationModal 
+        isOpen={showLogoutModal}
+        onCancel={handleCancelLogout}
+      />
     </div>
   );
 };

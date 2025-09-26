@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 import GestionAlumnos from './GestionAlumnos';
 import CredencialesQR from './CredencialesQR';
+import LogoutConfirmationModal from '@/components/auth/LogoutConfirmationModal';
 
 const Dashboard = () => {
   const { profile, signOut } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentView, setCurrentView] = useState('dashboard');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Actualizar reloj cada segundo
   useEffect(() => {
@@ -17,10 +19,12 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleSignOut = async () => {
-    if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-      await signOut();
-    }
+ const handleSignOut = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   const menuItems = [
@@ -222,6 +226,10 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      <LogoutConfirmationModal 
+      isOpen={showLogoutModal}
+      onCancel={handleCancelLogout}
+    />
     </div>
   );
 };
